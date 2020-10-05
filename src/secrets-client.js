@@ -1,9 +1,9 @@
 // Install dependency by running: npm install jwt-decode
-const jwtDecode = require('jwt-decode')
+const jwt = require('jsonwebtoken');
 
 const rootPath = "http://localhost:3000"
 
-let accessToken = null
+let accessToken = localStorage.getItem('token')
 
 async function sendRequest(method, uri, body = null, contentType = "application/json") {
 
@@ -38,7 +38,7 @@ async function sendRequest(method, uri, body = null, contentType = "application/
                 alert("ERROR, unknown Content-Type to send body with.")
 
         }
-
+        
     }
 
     try {
@@ -55,152 +55,19 @@ async function sendRequest(method, uri, body = null, contentType = "application/
 
         return await fetch(rootPath + uri, requestInit)
 
-    } catch (error) {
+    } catch (err) {
         throw ["networkError"]
     }
 
 }
 
-function displayError(response) {
+function displayError(res) {
 
     alert(`
-		SDK has not been programmed to handle status code ${response.status}
+		SDK has not been programmed to handle status code ${res.status}
 		for the last request sent.
 	`)
 
-}
-
-
-
-
-//-----------------ACCOUNTS DB
-
-//---------create
-module.exports.createAccount = async (account, callback) => {
-
-    let response
-
-    try {
-        response = await sendRequest("POST", "/accounts", account)
-    } catch (errors) {
-        callback(errors)
-        return
-    }
-
-    let errors = []
-    let id = -1
-
-    switch (response.status) {
-
-        case 201:
-            const locationHeader = response.headers.get("Location")
-            id = parseInt(locationHeader.substr("/accounts/".length))
-            break
-
-        case 400:
-            errors = await response.json()
-            break
-
-        case 422:
-            errors = ["invalidAccount"]
-            break
-
-        case 500:
-            errors = ["backendError"]
-            break
-
-        default:
-            displayError(response)
-
-    }
-
-    callback(errors, id)
-} 
-
-//---------update
-module.exports.updateAccountById = async (account, callback) => {
-
-    let response
-
-    try {
-        response = await sendRequest("PUT", "/accounts/" + account.id, account)
-    } catch (errors) {
-        callback(errors)
-        return
-    }
-
-    let errors = []
-
-    switch (response.status) {
-
-        case 204:
-            break
-
-        case 400:
-            errors = await response.json()
-            break
-
-        case 401:
-            errors = await response.json()
-            break
-
-        case 404:
-            errors = ["notFound"]
-            break
-
-        case 422:
-            errors = ["invalidAccount"]
-            break
-
-        case 500:
-            errors = ["backendError"]
-            break
-
-        default:
-            displayError(response)
-
-    }
-
-    callback(errors)
-}
-
-//---------delete
-module.exports.deleteAccountById = async (id, callback) => {
-
-    let response
-
-    try {
-        response = await sendRequest("DELETE", "/accounts/" + id)
-    } catch (errors) {
-        callback(errors)
-        return
-    }
-
-    let errors = []
-
-    switch (response.status) {
-
-        case 204:
-            break
-
-        case 401:
-            errors = await response.json()
-            break
-
-        case 404:
-            errors = ["notFound"]
-            break
-
-        case 500:
-            errors = ["backendError"]
-            break
-
-        default:
-            displayError(response)
-
-    }
-
-    callback(errors)
 }
 
 //----------------AUTHENTICATION
@@ -210,14 +77,13 @@ module.exports.login = async function (username, password, callback) {
 
     const bodyToSend = {
         username,
-        password,
-        grant_type: "password"
+        password
     }
 
-    let response
+    let res
 
     try {
-        response = await sendRequest("POST", "/tokens", bodyToSend, "application/x-www-form-urlencoded")
+        res = await sendRequest("POST", "/tokens", bodyToSend, "application/x-www-form-urlencoded")
     } catch (errors) {
         callback(errors)
         return
@@ -231,43 +97,32 @@ module.exports.login = async function (username, password, callback) {
 
     let body
 
-    switch (response.status) {
+    switch (res.status) {
 
         case 200:
 
-            body = await response.json()
+            accessToken = await res.json()
 
-            accessToken = body.access_token
+            const user = jwt.decode(accessToken)
 
-            const payload = jwtDecode(body.id_token)
-            account.id = payload.sub
-            account.username = payload.preferred_username
+            localStorage.setItem('username', user.preferred_username)
+            localStorage.setItem('userId', user.accountId)
+            localStorage.setItem('isLoggedIn', true)
+            localStorage.setItem('token', accessToken)
 
+            account.id = user.accountId
+            account.username = user.preferred_username
             break
 
         case 400:
-
-            body = await response.json()
-
-            switch (body.error) {
-
-                case "invalid_grant":
-                    errors = ["wrongCredentials"]
-                    break
-
-                default:
-                    errors = ["unknownErrorGettingToken: " + body.error]
-                    alert(`
-						SDK has not been programmed to handle error ${body.error}
-						when failing to login.
-					`)
-
+            body = await res.json()
+            if (body.err) {
+                errors = ["unknownErrorGettingToken: " + body.err]
             }
-
             break
 
         default:
-            displayError(response)
+            displayError(res)
 
     }
 
@@ -275,23 +130,25 @@ module.exports.login = async function (username, password, callback) {
 
 }
 
-//---------login
+//---------logout
 module.exports.logout = async function (callback) {
     accessToken = null
+
+    localStorage.clear();
+
     callback()
 }
 
 
+//-----------------ACCOUNTS DB
 
-//----------------SECRETS DB
+//---------create
+module.exports.createAccount = async (account, callback) => {
 
-//---------create 
-module.exports.createSecret = async (secret, callback) => {
-
-    let response
+    let res
 
     try {
-        response = await sendRequest("POST", "/secrets", secret)
+        res = await sendRequest("POST", "/accounts", account)
     } catch (errors) {
         callback(errors)
         return
@@ -300,23 +157,19 @@ module.exports.createSecret = async (secret, callback) => {
     let errors = []
     let id = -1
 
-    switch (response.status) {
+    switch (res.status) {
 
         case 201:
-            const locationHeader = response.headers.get("Location")
-            id = parseInt(locationHeader.substr("/secrets/".length))
+            const locationHeader = res.headers.get("Location")
+            id = parseInt(locationHeader.substr("/accounts/".length))
             break
 
         case 400:
-            errors = await response.json()
-            break
-
-        case 401:
-            errors = await response.json()
+            errors = await res.json()
             break
 
         case 422:
-            errors = ["invalidSecret"]
+            errors = ["invalidAccount"]
             break
 
         case 500:
@@ -324,20 +177,20 @@ module.exports.createSecret = async (secret, callback) => {
             break
 
         default:
-            displayError(response)
+            displayError(res)
 
     }
 
     callback(errors, id)
-}
+} 
 
-//---------delete
-module.exports.deleteSecretById = async (id, callback) => {
+//---------update
+module.exports.updateAccountById = async (account, callback) => {
 
-    let response
+    let res
 
     try {
-        response = await sendRequest("DELETE", "/secrets/" + id)
+        res = await sendRequest("PUT", "/accounts/" + account.id, account)
     } catch (errors) {
         callback(errors)
         return
@@ -345,13 +198,61 @@ module.exports.deleteSecretById = async (id, callback) => {
 
     let errors = []
 
-    switch (response.status) {
+    switch (res.status) {
 
         case 204:
             break
 
+        case 400:
+            errors = await res.json()
+            break
+
         case 401:
-            errors = await response.json()
+            errors = await res.json()
+            break
+
+        case 404:
+            errors = ["notFound"]
+            break
+
+        case 422:
+            errors = ["invalidAccount"]
+            break
+
+        case 500:
+            errors = ["backendError"]
+            break
+
+        default:
+            displayError(res)
+
+    }
+
+    callback(errors)
+}
+
+//---------delete
+module.exports.deleteAccountById = async (id, callback) => {
+
+    let res
+
+    try {
+        res = await sendRequest("DELETE", "/accounts/" + id)
+    } catch (errors) {
+        callback(errors)
+        return
+    }
+
+    let errors = []
+
+    switch (res.status) {
+
+        case 204:
+            localStorage.clear()
+            break
+
+        case 401:
+            errors = await res.json()
             break
 
         case 404:
@@ -363,7 +264,93 @@ module.exports.deleteSecretById = async (id, callback) => {
             break
 
         default:
-            displayError(response)
+            displayError(res)
+
+    }
+
+    callback(errors)
+}
+
+//----------------SECRETS DB
+
+//---------create 
+module.exports.createSecret = async (secret, callback) => {
+
+    let res
+
+    try {
+        res = await sendRequest("POST", "/secrets", secret)
+    } catch (errors) {
+        callback(errors)
+        return
+    }
+
+    let errors = []
+    let id = -1
+
+    switch (res.status) {
+
+        case 201:
+            const locationHeader = res.headers.get("Location")
+            id = parseInt(locationHeader.substr("/secrets/".length))
+            break
+
+        case 400:
+            errors = await res.json()
+            break
+
+        case 401:
+            errors = await res.json()
+            break
+
+        case 422:
+            errors = ["invalidSecret"]
+            break
+
+        case 500:
+            errors = ["backendError"]
+            break
+
+        default:
+            displayError(res)
+
+    }
+
+    callback(errors, id)
+}
+
+//---------delete
+module.exports.deleteSecretById = async (id, callback) => {
+    let res
+
+    try {
+        res = await sendRequest("DELETE", "/secrets/" + id)
+    } catch (errors) {
+        callback(errors)
+        return
+    }
+
+    let errors = []
+
+    switch (res.status) {
+
+        case 204:
+            break
+
+        case 401:
+            errors = await res.json()
+            break
+
+        case 404:
+            errors = ["notFound"]
+            break
+
+        case 500:
+            errors = ["backendError"]
+            break
+
+        default:
+            displayError(res)
 
     }
 
@@ -373,10 +360,10 @@ module.exports.deleteSecretById = async (id, callback) => {
 //---------get all secrets
 module.exports.getAllSecrets = async (callback) => {
 
-    let response
+    let res
 
     try {
-        response = await sendRequest("GET", "/secrets")
+        res = await sendRequest("GET", "/secrets")
     } catch (errors) {
         callback(errors)
         return
@@ -385,10 +372,10 @@ module.exports.getAllSecrets = async (callback) => {
     let errors = []
     let secrets = []
 
-    switch (response.status) {
+    switch (res.status) {
 
         case 200:
-            secrets = await response.json()
+            secrets = await res.json()
             break
 
         case 500:
@@ -396,7 +383,7 @@ module.exports.getAllSecrets = async (callback) => {
             break
 
         default:
-            displayError(response)
+            displayError(res)
 
     }
 
@@ -407,10 +394,10 @@ module.exports.getAllSecrets = async (callback) => {
 //---------get secrets by user
 module.exports.getSecretsByAccountId = async (accountId, callback) => {
 
-    let response
+    let res
 
     try {
-        response = await sendRequest("GET", "/secrets/" + accountId)
+        res = await sendRequest("GET", "/secrets/" + accountId)
     } catch (errors) {
         callback(errors)
         return
@@ -419,10 +406,10 @@ module.exports.getSecretsByAccountId = async (accountId, callback) => {
     let errors = []
     let secrets = []
 
-    switch (response.status) {
+    switch (res.status) {
 
         case 200:
-            secrets = await response.json()
+            secrets = await res.json()
             break
 
         case 500:
@@ -430,7 +417,7 @@ module.exports.getSecretsByAccountId = async (accountId, callback) => {
             break
 
         default:
-            displayError(response)
+            displayError(res)
 
     }
 

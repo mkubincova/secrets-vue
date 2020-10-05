@@ -2,7 +2,6 @@
   <div class="edit-account">
     <h1>Change password</h1>
 
-      <input v-model="opassword" type="password" placeholder="Old Password"> <br>
       <input v-model="npassword" type="password" placeholder="New Password"> <br>
       <input v-model="rnpassword" type="password" placeholder="Repeat New Password"> <br>
 
@@ -23,7 +22,6 @@ export default {
   props: ["user"],
   data() {
           return {
-            opassword: "",
             npassword: "",
             rnpassword: ""
           }
@@ -40,7 +38,7 @@ export default {
 
         client.updateAccountById(account, (errors) => {
           if (errors.length == 0) {
-            console.log("Your account was updated")
+            console.log("Your account has been updated")
             this.$router.push("/account/" + account.id)
           }
         })

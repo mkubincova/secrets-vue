@@ -3,7 +3,6 @@
     <Header :user="user"/>
     <div id="nav">
       <router-link to="/">Home</router-link> |
-      <router-link to="/login">Login</router-link> |
       <router-link to="/register">Register</router-link> |
       <router-link to="/submit">Submit</router-link> |
       <router-link :to="'/account/' + user.id">Account</router-link> |
@@ -24,12 +23,17 @@ export default {
         return {
             // ...
             user: {
-                isLoggedIn: true,
-                name: "Parsley",
-                id: "5"
+                isLoggedIn: false,
+                name: "",
+                id: ""
             }
         }
-    }
+  },
+  mounted() {
+    this.user.isLoggedIn = localStorage.getItem("isLoggedIn")
+    this.user.name = localStorage.getItem('username');
+    this.user.id = localStorage.getItem('userId')
+  }
 }
 </script>>
 

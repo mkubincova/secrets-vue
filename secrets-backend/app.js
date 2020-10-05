@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express')
 const sqlite3 = require('sqlite3')
 const bodyParser = require('body-parser')
+const jwt = require('jsonwebtoken');
 
 const app = express()
 const db = new sqlite3.Database("secrets-db.db")
@@ -8,28 +10,46 @@ const db = new sqlite3.Database("secrets-db.db")
 app.use(bodyParser.json())
 
 // Enable CORS.
-app.use(function (request, response, next) {
+app.use(function (req, res, next) {
 
-    // Allow client-side JS from the following websites to send requests to us:
-    // (not optimal, for better security, change * to the URI of your frontend)
-    response.setHeader("Access-Control-Allow-Origin", "http://localhost:8080")
+    res.setHeader("Access-Control-Allow-Origin", "http://localhost:8080")
 
-    // Allow client-side JS to send requests with the following methods:
-    response.setHeader("Access-Control-Allow-Methods", "*")
+    res.setHeader("Access-Control-Allow-Methods", "*")
 
-    // Allow client-side JS to send requests with the following headers:
     // (needed for the Authorization and Content-Type headers)
-    response.setHeader("Access-Control-Allow-Headers", "*")
+    res.setHeader("Access-Control-Allow-Headers", "*")
 
-    // Allow client-side JS to read the following headers in the response:
+    // Allow client-side JS to read the following headers in the res:
     // (in addition to Cache-Control, Content-Language, Content-Type
     // Expires, Last-Modified, Pragma).
     // (needed for the Location header)
-    response.setHeader("Access-Control-Expose-Headers", "*")
+    res.setHeader("Access-Control-Expose-Headers", "*")
 
     next()
 
 })
+
+// Add middleware to parse the boyd in incoming HTTP reqs.
+app.use(express.json())
+app.use(express.urlencoded({
+    extended: false
+}))
+
+// Verify access token
+function authenticateToken(req, res, next) {
+    // Gather the jwt access token from the request header
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    if (token == null) return res.sendStatus(401) // if there isn't any token
+
+    jwt.verify(token, process.env.TOKEN_SECRET, (err, user) => {
+        console.log(err)
+        if (err) return res.sendStatus(403)
+        req.user = user
+        next() // pass the execution off to whatever request the client intended
+    })
+}
+
 
 /********************** DATABASE ***************************/
 db.run(`
@@ -42,7 +62,7 @@ db.run(`
     if (err){
         console.log(err);
     } else {
-        console.log("The table 'accounts' has been succesfully created.");
+        console.log("The table 'accounts' is working.");
     }
 })
 
@@ -51,83 +71,91 @@ db.run(`
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
         secret TEXT,
         accountId INTEGER,
-        FOREIGN KEY(accountId) REFERENCES accounts(id)
+        FOREIGN KEY(accountId) REFERENCES accounts(id) ON DELETE CASCADE
 	)
 `, function (err) {
     if (err) {
         console.log(err);
     } else {
-        console.log("The table 'secrets' has been succesfully created.");
+        console.log("The table 'secrets' is working.");
     }
 })
 
 
+/********************** AUTHENTICATION *********************/
 
+//---------login
+app.post("/tokens", (req, res) => {
+
+    //get account with matching username
+    const query = "SELECT * FROM accounts WHERE username = ?"
+    const values = [req.body.username]
+
+    db.get(query, values, (err, account) => {
+        if (err) {
+            res.status(500).end()
+        } else if (!account) {
+            console.log("Account with this username does not exist");
+        } else if (account.password != req.body.password) {
+            console.log("Incorrect password");
+        } else {
+            // Generate and send back access token valid for 30 minutes
+             const token = jwt.sign({
+                 accountId: account.id,
+                 preferred_username: account.username
+             }, process.env.TOKEN_SECRET, { expiresIn: '1800s' })
+ 
+             res.json(token) 
+        }
+    })
+})
 
 /********************** GET REQUESTS ***************************/
 
+//---------get all accounts
 app.get("/accounts", function (req, res) {
     const query = "SELECT * FROM accounts ORDER BY id ASC"
     db.all(query, function (err, accounts) {
         if (err) {
-            // If something went wrong, send back status code 500.
             res.status(500).end()
         } else {
-            // Otherwise, send back all accounts in JSON format.
             res.status(200).json(accounts)
         }
     })
 })
 
+//---------get all secrets
 app.get("/secrets", function (req, res) {
     const query = "SELECT * FROM secrets"
     db.all(query, function (err, secrets) {
         if (err) {
-            // If something went wrong, send back status code 500.
             res.status(500).end()
         } else {
-            // Otherwise, send back all accounts in JSON format.
             res.status(200).json(secrets)
         }
     })
 })
 
-app.get("/secrets/:accountId", function (req, res) {
+//---------get secrets by user 
+app.get("/secrets/:accountId",  function  (req, res) {
+
     const accountId = req.params.accountId
-    const query = "SELECT * FROM secrets WHERE accountId = ?"
-    const values = [accountId]
-    db.all(query, values, function (err, secrets) {
-        if (err) {
-            // If something went wrong, send back status code 500.
-            res.status(500).end()
-        } else {
-            // Otherwise, send back all accounts in JSON format.
-            res.status(200).json(secrets)
-        }
-    })
+
+        const query = "SELECT * FROM secrets WHERE accountId = ?"
+        const values = [accountId]
+        db.all(query, values, function (err, secrets) {
+            if (err) {
+                res.status(500).end()
+            } else {
+                res.status(200).json(secrets)
+            }
+        })
+    
 })
 
-app.get("/accounts/:id", function (req, res) {
-    const id = req.params.id
-    const query = "SELECT id, username FROM accounts WHERE id = ?"
-    const values = [id]
+/********************** POST REQESTS ***************************/
 
-    db.get(query, values, function (err, account) {
-        if (err) {
-            // If something went wrong, send back status code 500.
-            res.status(500).end()
-        } else if (!account) {
-            // If no account with that id existed.
-            res.status(404).end()
-        } else {
-            // Otherwise, send back the account in JSON format.
-            res.status(200).json(account)
-        }
-    })
-})
-
-
-/********************** POST REQUESTS ***************************/
+//---------create account 
 app.post("/accounts", function (req, res) {
     const account = req.body
     const query = "INSERT INTO accounts (username, password) VALUES (?, ?)"
@@ -143,6 +171,7 @@ app.post("/accounts", function (req, res) {
     })
 })
 
+//---------create secret
 app.post("/secrets", function (req, res) {
     const secret = req.body
     const query = "INSERT INTO secrets (secret, accountId) VALUES (?, ?)"
@@ -158,61 +187,86 @@ app.post("/secrets", function (req, res) {
     })
 })
 
-/********************** DELETE REQUESTS ***************************/
-app.delete("/accounts/:id", function (req, res){
-    const id = req.params.id
+
+
+/********************** DELETE REQUEST ***************************/
+
+//---------delete account 
+app.delete("/accounts/:id", authenticateToken, function (req, res){
+
+    // Check authorization.
+    const accountId = req.user.accountId
+    
+    if (!accountId) {
+        // Not authenticated.
+        res.status(401).json(["notAuthenticated"])
+        return
+    } else if (req.params.id != accountId) {
+        // Not owner of account.
+        res.status(401).json(["notAuthorized"])
+        return
+    }
+    
     const query = "DELETE FROM accounts WHERE id = ?"
-    const values = [id]
+    const values = [accountId]
 
     db.run(query, values, function (err, account){
         if (err) {
-            // If sth went wrong.
             res.status(500).end()
         } else if (!account) {
-            // If no account with that id existed.
             res.status(404).end()
         } else {
-            // Otherwise, send back ok response.
             res.status(204).end()
         }            
     })
 
 })
 
+//---------delete secret 
 app.delete("/secrets/:id", function (req, res) {
+
     const id = req.params.id
     const query = "DELETE FROM secrets WHERE id = ?"
     const values = [id]
 
     db.run(query, values, function (err, secret) {
         if (err) {
-            // If sth went wrong.
             res.status(500).end()
         } else if (!secret) {
-            // If no account with that id existed.
             res.status(404).end()
         } else {
-            // Otherwise, send back ok response.
             res.status(204).end()
         }
     })
 
 })
 
-/********************** PUT REQUESTS ***************************/
-app.put("/accounts/:id", function (req, res) {
-    const id = req.body.id
+/********************** PUT REQUEST ***************************/
+
+//---------update account 
+app.put("/accounts/:id", authenticateToken, function (req, res) {
+
+    // Check authorization.
+    const accountId = req.user.accountId
+
+    if (!accountId) {
+        // Not authenticated
+        res.status(401).json(["notAuthenticated"])
+        return
+    } else if (req.params.id != accountId) {
+        // Not owner of account.
+        res.status(401).json(["notAuthorized"])
+        return
+    }
+
     const newpassword = req.body.newpassword
     const query = "UPDATE accounts SET password = ? WHERE id = ?"
-    const values = [newpassword, id]
+    const values = [newpassword, accountId]
 
     db.run(query, values, function (err) {
         if (err) {
-            // If sth went wrong.
             res.status(500).end()
         } else {
-            // Otherwise, send back ok response.
-            const numberOfUpdatedRows = this.changes
             res.status(204).end()
         }
     })

@@ -10,11 +10,7 @@
       <button v-on:click="register">Register</button>
     </form>
 
-    <p>----- or -----</p>
-
-    <button>Google</button>
-
-    <p>Already have an account? <router-link to="/login">Login</router-link></p>
+    <p>Already have an account? <router-link to="/">Login</router-link></p>
   </div>
 </template>
 
