@@ -42,7 +42,8 @@ app.use(express.urlencoded({
 function authenticateToken(req, res, next) {
     // Gather the jwt access token from the request header
     const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
+    //if authHeader exists (Bearer "dlfjdkglflgff..."), split it to get token ("dlfjdkglflgff...")
+    const token = authHeader && authHeader.split(' ')[1] 
     if (token == null) return res.sendStatus(401) // if there isn't any token
 
     jwt.verify(token, process.env.TOKEN_SECRET, (err, user) => {
@@ -100,11 +101,12 @@ app.post("/tokens", (req, res) => {
         } else if (!account) {
             console.log("Account with this username does not exist");
         } else {
-
+            //compare hashed password from database with value from login form
             bcypt.compare(req.body.password, account.password, (err, result) => {
                 if(result){
-                    // Generate and send back access token valid for 30 minutes
+                    // Generate and send back access token valid for 30 minutes (1800 seconds)
                     const token = jwt.sign({
+                        //store account id and username in the token
                         accountId: account.id,
                         preferred_username: account.username
                     }, process.env.TOKEN_SECRET, { expiresIn: '1800s' })
@@ -120,18 +122,6 @@ app.post("/tokens", (req, res) => {
 })
 
 /********************** GET REQUESTS ***************************/
-
-//---------get all accounts
-app.get("/accounts", function (req, res) {
-    const query = "SELECT * FROM accounts ORDER BY id ASC"
-    db.all(query, function (err, accounts) {
-        if (err) {
-            res.status(500).end()
-        } else {
-            res.status(200).json(accounts)
-        }
-    })
-})
 
 //---------get all secrets
 app.get("/secrets", function (req, res) {
@@ -150,15 +140,15 @@ app.get("/secrets/:accountId",  function  (req, res) {
 
     const accountId = req.params.accountId
 
-        const query = "SELECT * FROM secrets WHERE accountId = ?"
-        const values = [accountId]
-        db.all(query, values, function (err, secrets) {
-            if (err) {
-                res.status(500).end()
-            } else {
-                res.status(200).json(secrets)
-            }
-        })
+    const query = "SELECT * FROM secrets WHERE accountId = ?"
+    const values = [accountId]
+    db.all(query, values, function (err, secrets) {
+        if (err) {
+            res.status(500).end()
+        } else {
+            res.status(200).json(secrets)
+        }
+    })
     
 })
 
@@ -212,15 +202,15 @@ app.post("/secrets", function (req, res) {
 //---------delete account 
 app.delete("/accounts/:id", authenticateToken, function (req, res){
 
-    // Check authorization.
+    // Check authorization
     const accountId = req.user.accountId
     
     if (!accountId) {
-        // Not authenticated.
+        // Not logged in
         res.status(401).json(["notAuthenticated"])
         return
     } else if (req.params.id != accountId) {
-        // Not owner of account.
+        // Not owner of account
         res.status(401).json(["notAuthorized"])
         return
     }
@@ -268,15 +258,15 @@ app.put("/accounts/:id", authenticateToken, function (req, res) {
     const accountId = req.user.accountId
 
     if (!accountId) {
-        // Not authenticated
+        // Not logged in
         res.status(401).json(["notAuthenticated"])
         return
     } else if (req.params.id != accountId) {
-        // Not owner of account.
+        // Not owner of account
         res.status(401).json(["notAuthorized"])
         return
     }
-
+    //Hash new password and update the database
     bcypt.hash(req.body.newpassword, saltRounds, (err, hash) => {
         if (!err) {
             const query = "UPDATE accounts SET password = ? WHERE id = ?"

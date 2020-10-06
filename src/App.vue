@@ -1,13 +1,7 @@
 <template>
   <div id="app">
     <Header :user="user"/>
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/register">Register</router-link> |
-      <router-link to="/submit">Submit</router-link> |
-      <router-link :to="'/account/' + user.id">Account</router-link> |
-      <router-link to="/edit">Edit Account</router-link>
-    </div>
+    
     <router-view :user="user"/>
   </div>
 </template>
