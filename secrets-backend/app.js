@@ -2,7 +2,10 @@ require('dotenv').config();
 const express = require('express')
 const sqlite3 = require('sqlite3')
 const bodyParser = require('body-parser')
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken')
+const bcypt = require('bcrypt')
+
+const saltRounds = 10
 
 const app = express()
 const db = new sqlite3.Database("secrets-db.db")
@@ -96,16 +99,22 @@ app.post("/tokens", (req, res) => {
             res.status(500).end()
         } else if (!account) {
             console.log("Account with this username does not exist");
-        } else if (account.password != req.body.password) {
-            console.log("Incorrect password");
         } else {
-            // Generate and send back access token valid for 30 minutes
-             const token = jwt.sign({
-                 accountId: account.id,
-                 preferred_username: account.username
-             }, process.env.TOKEN_SECRET, { expiresIn: '1800s' })
- 
-             res.json(token) 
+
+            bcypt.compare(req.body.password, account.password, (err, result) => {
+                if(result){
+                    // Generate and send back access token valid for 30 minutes
+                    const token = jwt.sign({
+                        accountId: account.id,
+                        preferred_username: account.username
+                    }, process.env.TOKEN_SECRET, { expiresIn: '1800s' })
+
+                    res.json(token) 
+                } else {
+                    console.log("Incorrect password");
+                }
+            })
+            
         }
     })
 })
@@ -159,16 +168,25 @@ app.get("/secrets/:accountId",  function  (req, res) {
 app.post("/accounts", function (req, res) {
     const account = req.body
     const query = "INSERT INTO accounts (username, password) VALUES (?, ?)"
-    const values = [account.username, account.password]
-    db.run(query, values, function (err) {
-        if (err) {
-            res.status(500).end()
+
+    bcypt.hash(account.password, saltRounds, (err, hash) => {
+        if (!err) {
+            const values = [account.username, hash]
+            db.run(query, values, function (err) {
+                if (err) {
+                    res.status(500).end()
+                } else {
+                    const id = this.lastID
+                    res.header("Location", "/accounts/" + id)
+                    res.status(201).end()
+                }
+            })
         } else {
-            const id = this.lastID
-            res.header("Location", "/accounts/" + id)
-            res.status(201).end()
-        }
+            console.log("There has been an error hashing your password");
+        }  
     })
+
+    
 })
 
 //---------create secret
@@ -259,18 +277,21 @@ app.put("/accounts/:id", authenticateToken, function (req, res) {
         return
     }
 
-    const newpassword = req.body.newpassword
-    const query = "UPDATE accounts SET password = ? WHERE id = ?"
-    const values = [newpassword, accountId]
-
-    db.run(query, values, function (err) {
-        if (err) {
-            res.status(500).end()
+    bcypt.hash(req.body.newpassword, saltRounds, (err, hash) => {
+        if (!err) {
+            const query = "UPDATE accounts SET password = ? WHERE id = ?"
+            const values = [hash, accountId]
+            db.run(query, values, function (err) {
+                if (err) {
+                    res.status(500).end()
+                } else {
+                    res.status(204).end()
+                }
+            })
         } else {
-            res.status(204).end()
+            console.log("There has been an error hashing your password");
         }
     })
-
 })
 
 /********************** START SERVER ***************************/
