@@ -7,10 +7,45 @@ const bcypt = require('bcrypt')
 
 const saltRounds = 10
 
+const YAML = require('yaml')
+
 const app = express()
 const db = new sqlite3.Database("secrets-db.db")
 
+
+//Handle request body in different data formats (YAML, JSON, www-form-urlencoded)
+app.use((req, res, next) => {
+    
+    if (req.headers['content-type'] == "application/yaml") {
+        const bodyParts = []
+        req.on("data", function (chunk) {
+            bodyParts.push(chunk)
+        })
+        req.on("end", function () {
+            const body = Buffer.concat(bodyParts).toString()
+            const parsedBody = YAML.parse(body)
+            req.body = parsedBody
+            next()
+        }) 
+    } else {
+        next()
+    }
+})
 app.use(bodyParser.json())
+app.use(express.json())
+app.use(express.urlencoded({
+    extended: false
+}))
+
+//Handle response body in different data formats (YAML, JSON)
+function resFormat(req, data) {
+    if (req.headers['accept'] == "application/yaml"){
+        return YAML.stringify(data);
+    } else {
+        return JSON.stringify(data);
+    }
+}
+
 
 // Enable CORS.
 app.use(function (req, res, next) {
@@ -32,11 +67,6 @@ app.use(function (req, res, next) {
 
 })
 
-// Add middleware to parse the boyd in incoming HTTP reqs.
-app.use(express.json())
-app.use(express.urlencoded({
-    extended: false
-}))
 
 // Verify access token
 function authenticateToken(req, res, next) {
@@ -130,7 +160,8 @@ app.get("/secrets", function (req, res) {
         if (err) {
             res.status(500).end()
         } else {
-            res.status(200).json(secrets)
+            const bodyToSend = resFormat(req, secrets)
+            res.send(bodyToSend)
         }
     })
 })
@@ -146,7 +177,8 @@ app.get("/secrets/:accountId",  function  (req, res) {
         if (err) {
             res.status(500).end()
         } else {
-            res.status(200).json(secrets)
+            const bodyToSend = resFormat(req, secrets)
+            res.send(bodyToSend)
         }
     })
     
@@ -207,11 +239,13 @@ app.delete("/accounts/:id", authenticateToken, function (req, res){
     
     if (!accountId) {
         // Not logged in
-        res.status(401).json(["notAuthenticated"])
+        const bodyToSend = resFormat(req, ["notAuthenticated"])
+        res.status(401).send(bodyToSend)
         return
     } else if (req.params.id != accountId) {
         // Not owner of account
-        res.status(401).json(["notAuthorized"])
+        const bodyToSend = resFormat(req, ["notAuthorized"])
+        res.status(401).send(bodyToSend)
         return
     }
     
@@ -254,16 +288,18 @@ app.delete("/secrets/:id", function (req, res) {
 //---------update account 
 app.put("/accounts/:id", authenticateToken, function (req, res) {
 
-    // Check authorization.
+    // Check authorization
     const accountId = req.user.accountId
 
     if (!accountId) {
         // Not logged in
-        res.status(401).json(["notAuthenticated"])
+        const bodyToSend = resFormat(req, ["notAuthenticated"])
+        res.status(401).send(bodyToSend)
         return
     } else if (req.params.id != accountId) {
         // Not owner of account
-        res.status(401).json(["notAuthorized"])
+        const bodyToSend = resFormat(req, ["notAuthorized"])
+        res.status(401).send(bodyToSend)
         return
     }
     //Hash new password and update the database
