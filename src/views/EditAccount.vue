@@ -6,6 +6,7 @@
       <input v-model="rnpassword" type="password" placeholder="Repeat New Password"> <br>
 
       <p v-if="npassword != rnpassword">New Password and Repeat New Password have to match!</p>
+      <p>{{ emptyPassword }}</p>
       
       <button v-on:click="editPassword">Save changes</button>
 
@@ -15,20 +16,20 @@
 
 
 <script>
+document.title = "Change password"
 import { log } from 'util'
-
-
 export default {
   props: ["user"],
   data() {
           return {
             npassword: "",
-            rnpassword: ""
+            rnpassword: "",
+            emptyPassword: ""
           }
   },
   methods: {
     editPassword(){
-      if (this.npassword === this.rnpassword) {
+      if (this.npassword === this.rnpassword && this.npassword != "") {
         const client = require('../secrets-client')
 
         const account = {
@@ -43,7 +44,8 @@ export default {
           }
         })
       } else {
-        console.log("We could not update your account, please check if filled all field correctly.");
+        console.log("We could not update your account, please check if all the fields are filled correctly.");
+        this.emptyPassword = "The new password can not be empty"
       }
       
     }

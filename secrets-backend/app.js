@@ -130,6 +130,7 @@ app.post("/tokens", (req, res) => {
             res.status(500).end()
         } else if (!account) {
             console.log("Account with this username does not exist");
+            res.status(404).end()
         } else {
             //compare hashed password from database with value from login form
             bcypt.compare(req.body.password, account.password, (err, result) => {
@@ -141,9 +142,12 @@ app.post("/tokens", (req, res) => {
                         preferred_username: account.username
                     }, process.env.TOKEN_SECRET, { expiresIn: '1800s' })
 
-                    res.json(token) 
+                    const bodyToSend = resFormat(req, token)
+                    res.send(bodyToSend)
+                    
                 } else {
                     console.log("Incorrect password");
+                    res.status(401).end()
                 }
             })
             
@@ -161,7 +165,7 @@ app.get("/secrets", function (req, res) {
             res.status(500).end()
         } else {
             const bodyToSend = resFormat(req, secrets)
-            res.send(bodyToSend)
+            res.status(200).send(bodyToSend)
         }
     })
 })
@@ -178,7 +182,7 @@ app.get("/secrets/:accountId",  function  (req, res) {
             res.status(500).end()
         } else {
             const bodyToSend = resFormat(req, secrets)
-            res.send(bodyToSend)
+            res.status(200).send(bodyToSend)
         }
     })
     
@@ -196,7 +200,8 @@ app.post("/accounts", function (req, res) {
             const values = [account.username, hash]
             db.run(query, values, function (err) {
                 if (err) {
-                    res.status(500).end()
+                    console.log("Account with this username already exists");
+                    res.status(422).end()
                 } else {
                     const id = this.lastID
                     res.header("Location", "/accounts/" + id)
@@ -205,6 +210,7 @@ app.post("/accounts", function (req, res) {
             })
         } else {
             console.log("There has been an error hashing your password");
+            res.status(500).end()
         }  
     })
 
@@ -316,6 +322,7 @@ app.put("/accounts/:id", authenticateToken, function (req, res) {
             })
         } else {
             console.log("There has been an error hashing your password");
+            res.status(500).end()
         }
     })
 })

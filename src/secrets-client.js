@@ -6,7 +6,6 @@ const rootPath = "http://localhost:3000"
 let accessToken = localStorage.getItem('token')
 
 async function sendRequest(method, uri, body = null, contentType = "application/json") {
-
     let bodyToSend = ""
     const headers = new Headers()
 
@@ -52,9 +51,8 @@ async function sendRequest(method, uri, body = null, contentType = "application/
         if (bodyToSend != "") {
             requestInit.body = bodyToSend
         }
-
         return await fetch(rootPath + uri, requestInit)
-
+        
     } catch (err) {
         throw ["networkError"]
     }
@@ -88,7 +86,6 @@ module.exports.login = async function (username, password, callback) {
         callback(errors)
         return
     }
-
     let errors = []
     let account = {
         id: -1,
@@ -119,6 +116,18 @@ module.exports.login = async function (username, password, callback) {
             if (body.err) {
                 errors = ["unknownErrorGettingToken: " + body.err]
             }
+            break
+
+        case 404:
+            
+            errors = ["Account with this username does not exist"]
+            
+            break
+            
+        case 401:
+        
+            errors = ["Incorrect password"]
+            
             break
 
         default:
@@ -267,7 +276,7 @@ module.exports.deleteAccountById = async (id, callback) => {
             displayError(res)
 
     }
-
+    localStorage.clear()
     callback(errors)
 }
 

@@ -10,22 +10,28 @@
     <h2>My secrets</h2>
     <ul class="secrets">
         <li v-for="(data) in secrets" :key="data.id">
-          <p> {{data.secret}} <span v-on:click="deleteSecret(data.id)">*delete*</span></p>
+          <p> {{data.secret}} </p>
+          <font-awesome-icon class="deleteIcon" :icon="['fas', 'trash-alt']" v-on:click="deleteSecret(data.id)"/>
         </li>
     </ul>
-
     <button v-on:click="deleteAccount">Delete account</button>
   </div>
 </template>
 
 <script>
+document.title = "My account"
+import { library } from '../../node_modules/@fortawesome/fontawesome-svg-core'
+import { faTrashAlt } from '../../node_modules/@fortawesome/free-solid-svg-icons'
+
+library.add(faTrashAlt)
+
 import { log } from 'util'
 export default {
   props: ["user"],
   data() {
-          return {
-            secrets: [],
-          }
+    return {
+      secrets: [],
+    }
   },
   methods: {
     deleteSecret(id){
@@ -35,13 +41,11 @@ export default {
         this.$router.push("/")
         if (errors.length == 0) {
           console.log("Item was deleted")
-          
         }
       })
     },
     deleteAccount(){
       const client = require('../secrets-client')
-
       client.deleteAccountById(this.user.id, (errors) => {
         this.user.isLoggedIn = false
         this.$router.push("/")
@@ -49,7 +53,6 @@ export default {
     },
     logOut(){
        const client = require('../secrets-client')
-
        client.logout(()=> {
          this.user.isLoggedIn = false
          
@@ -58,16 +61,42 @@ export default {
     }
   },
   mounted() { 
-      const client = require('../secrets-client')
-      
-      client.getSecretsByAccountId(this.user.id, (errors, secrets) => {  
-        if(errors.length == 0){
-          this.secrets = secrets.reverse()
-        }
-      })
-
-      
-
+    const client = require('../secrets-client')
+    client.getSecretsByAccountId(this.user.id, (errors, secrets) => {  
+      if(errors.length == 0){
+        this.secrets = secrets.reverse()
+      }
+    })
   }
 }
 </script>
+
+<style>
+  .account {
+    max-width: 550px;
+    margin: auto;
+    background: #FEE9D8;
+    min-height: calc( 100vh - 40.667px );
+    padding: 0 9px 10px 0; 
+  }
+  .secrets {
+    margin: auto;
+    width: auto;
+  }
+  .secrets li {
+    overflow: hidden;
+  }
+
+  .account .secrets li p {
+    padding: 15px;
+    padding-bottom: 0px;
+  }
+  .deleteIcon {
+    margin: 7px 10px 10px 0;
+    float:right;
+  }
+  .deleteIcon:hover {
+    cursor: pointer;
+  }
+  
+</style>
