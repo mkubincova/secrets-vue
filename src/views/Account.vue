@@ -72,20 +72,6 @@ export default {
 </script>
 
 <style>
-  .account {
-    max-width: 550px;
-    margin: auto;
-    background: #FEE9D8;
-    min-height: calc( 100vh - 40.667px );
-    padding: 0 9px 10px 0; 
-  }
-  .secrets {
-    margin: auto;
-    width: auto;
-  }
-  .secrets li {
-    overflow: hidden;
-  }
 
   .account .secrets li p {
     padding: 15px;

@@ -1,11 +1,11 @@
 <template>
   <div class="home">
     <div v-if="user.isLoggedIn">
-      <h1>Welcome to our secrets collection!</h1>
-      <button><router-link to="/submit">Add secret!</router-link></button>
+      <h1>Welcome to our collection of secrets</h1>
+      <button><router-link to="/submit">Add secret</router-link></button>
 
       <ul class="secrets">
-          <li v-for="(data, index) in secrets" :key="index">
+          <li v-for="(data, index) in secrets" :key="index" >
             <p> {{data.secret}} </p>
           </li>
       </ul>
@@ -16,13 +16,15 @@
         <form>
           <input v-model="username" placeholder="Username" type="text"> <br>
           <input v-model="password" placeholder="Password" type="password"> <br>
+          <p>{{ info }}</p>
           <button type="submit" v-on:click="signUserIn">Login</button>
         </form>
-        <p>{{ info }}</p>
-
-      <p>Not a member? <router-link to="/register">
-        <u>Register </u><font-awesome-icon :icon="['fas', 'long-arrow-alt-right']"/>
-      </router-link></p>
+        
+      <p>Not a member? 
+        <router-link to="/register">
+          <u>REGISTER</u>
+        </router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -57,9 +59,19 @@ document.title = "Home"
           this.user.id = account.id
         }else{
           console.log(errors)
+          this.info = "The username or password is incorrect, please try again."
         }
       })
-    }  
+    }
+  },
+  computed: {
+    randomBkg: function () {
+      const colors = ["red", "blue", "green"]
+      const min = 0
+      const max = 2
+      const color = colors[Math.floor(Math.random() * (max - min + 1) + min)]
+      return color
+    }
   },
   mounted() { 
     const client = require('../secrets-client')
@@ -73,31 +85,41 @@ document.title = "Home"
 </script>
 
 <style>
+form p{
+  color: red;
+}
   .secrets {
     overflow: hidden;
-    margin-right: 9px;
     padding: 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     justify-content: center;
   }
   .secrets li {
-    max-width: calc( 50% - 9px );
-    flex: 0 1 auto;
-    margin-left: 9px;
+    width: 100%;
     margin-bottom: 9px;
     padding:0;
-    background: #DC622C;
     color: white;
     list-style: none;
     border-radius: 5px;
+    font-size: 1.5rem;
   }
+
+  li:nth-child(odd){
+    background-image: linear-gradient(to bottom right, #776483, #E99E75);
+  }  
+  li:nth-child(even){
+   background-image: linear-gradient(to bottom right, #44426E, #BBAAB8);
+  }  
+
   .secrets li p {
     padding: 20px 30px;
     margin: 0;
     font-size: 1em;
   }
   .home button {
-    margin-bottom: 40px; 
+    margin-bottom: 30px; 
   }
+
+  
 </style>

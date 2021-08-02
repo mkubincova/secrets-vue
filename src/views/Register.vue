@@ -12,7 +12,7 @@
     </form>
 
     <p>Already have an account? <router-link to="/">
-      <u>Login </u><font-awesome-icon :icon="['fas', 'long-arrow-alt-right']"/>
+      <u>LOGIN</u>
     </router-link></p>
   </div>
 </template>
@@ -47,13 +47,12 @@ export default {
         client.createAccount(newAccount, (errors, id) => {
           if (errors.length == 0) {
             this.$router.push("/")
+          } else {
+            console.log(errors)
+            this.info = "Try a different username, this one is already taken..."
           }
         })
 
-      } else {
-        console.log("Password and Repeat Password have to match!");
-        this.info = this.errors;
-        console.log(this.info)
       }
     }
   }

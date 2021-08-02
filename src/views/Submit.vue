@@ -1,8 +1,8 @@
 <template>
   <div class="submit">
-    <button id="backButton"><router-link to="/">Go back</router-link></button>
+    <router-link to="/"><img class="svg-icon" src="../assets/back.svg" alt="back"></router-link>
     <h1>Don't keep your secrets to yourself, <br> share them anonymously here!</h1>
-    <textarea v-model="text" rows="7" cols="50"></textarea> <br>
+    <textarea v-model="text" rows="7" cols="30"></textarea> <br>
     <button v-on:click="submitSecret">Submit</button>
   </div>
 </template>
@@ -37,15 +37,7 @@ export default {
 </script>
 
 <style>
-  .submit {
-    overflow: hidden;
-  }
-
-  #backButton {
-    display: block;
-    margin-left: 15%;
-    background: #DC622C;
-    font-weight: 300;
-    padding: 7px 15px;
-  }
+.svg-icon{
+  height: 40px;
+}
 </style>
