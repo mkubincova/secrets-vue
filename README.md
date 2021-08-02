@@ -19,6 +19,7 @@ npm run build
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
 
-![home](https://github.com/mkubincova/secrets-vue/blob/master/screencaps/register.png)
-![home](https://github.com/mkubincova/secrets-vue/blob/master/screencaps/home.png)
-![home](https://github.com/mkubincova/secrets-vue/blob/master/screencaps/account.png)
+<img src="https://github.com/mkubincova/secrets-vue/blob/master/screencaps/register.png" width=30%>
+<img src="https://github.com/mkubincova/secrets-vue/blob/master/screencaps/home.png" width=30%>
+<img src="https://github.com/mkubincova/secrets-vue/blob/master/screencaps/account.png" width=30%>
+
