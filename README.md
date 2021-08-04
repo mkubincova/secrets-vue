@@ -17,7 +17,7 @@ npm run build
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
 
-Screens:
+### Screens
 <div display="flex">
 <img src="https://github.com/mkubincova/secrets-vue/blob/master/screencaps/register.png" width=30%>
 <img src="https://github.com/mkubincova/secrets-vue/blob/master/screencaps/home.png" width=30%>
